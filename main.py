@@ -17,10 +17,10 @@ def lap5(f, h2):
     """
     f = np.pad(f, 1, mode='wrap')
 
-    left = f[1:-1, :-2]     # shift left for f(x - h, y)
-    right = f[1:-1, 2:]     # shift right for f(x + h, y)
-    down = f[2:, 1:-1]      # shift down for f(x, y - h)
-    up = f[:-2, 1:-1]       # shift up for f(x, y + h)
+    left   = f[1:-1, :-2]     # shift left for f(x - h, y)
+    right  = f[1:-1, 2:]     # shift right for f(x + h, y)
+    down   = f[2:, 1:-1]      # shift down for f(x, y - h)
+    up     = f[:-2, 1:-1]       # shift up for f(x, y + h)
     center = f[1:-1, 1:-1]  # center for f(x, y)
 
     fxy = (left + right + down + up - 4 * center) / h2
@@ -34,10 +34,10 @@ def plot(matrix):
   plt.show()
 
 def main():
-  da = 0.200  # 0.2
+  da = 0.255  # 0.2
   db = 0.100  # 0.1
-  F  = 0.025  # 0.025
-  k  = 0.056  # 0.056
+  F  = 0.030  # 0.025
+  k  = 0.055  # 0.056
 
   n = 64
   h = 2
@@ -69,7 +69,8 @@ def main():
     B += (db * lap5(B, h2) + ABB - B * (F + k)) * dt
 
   # plot the final time step and save figure to file
-  plt.imshow(A, interpolation='lanczos', cmap="Greys") # type: ignore
+  # plt.imshow(A, interpolation='lanczos', cmap="binary") # type: ignore
+  plt.imshow(B, interpolation='lanczos', cmap="binary") # type: ignore
   
   plt.show()
 

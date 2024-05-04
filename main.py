@@ -3,17 +3,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-import sys
+# import sys
 
+from numba import jit
 
-
-def lap5(f, h2):
+def lap5(f, h2) -> float:
   """
   Use a five-point stencil with periodic boundary conditions to approximate
   the Laplacian. The corresponding array slices for each component of the
   stencil are noted.
   """
-  f = np.pad(f, 1, mode='wrap')
+  f = np.pad(fold, 1, mode='wrap')
 
   left   = f[1:-1, :-2]   # shift left for f(x - h, y)
   right  = f[1:-1, 2:]    # shift right for f(x + h, y)
@@ -25,7 +25,23 @@ def lap5(f, h2):
 
   return fxy
 
+@jit
+def lap5_opt(grid, h2) -> float:
+  nrows, ncols = grid.shape
+  laplacian = np.zeros_like(grid)
 
+  for i in range(nrows):
+    for j in range(ncols):
+      laplacian[i, j] = (
+        grid[(i + 1) % nrows, j] +
+        grid[(i - 1) % nrows, j] +
+        grid[i, (j + 1) % ncols] +
+        grid[i, (j - 1) % ncols] -
+        4 * grid[i, j]
+      ) / 4
+  return laplacian
+
+@jit
 def reaction_diffusion(da: float, # diffusion rate for A
                        db: float, # diffusion rale for B
                         F: float, # feed rate
@@ -50,8 +66,8 @@ def reaction_diffusion(da: float, # diffusion rate for A
   for n in range(nt):
     # print(f'Running {n + 1:,}/{nt:,}', end='\r')
     ABB = A * B * B
-    A += (da * lap5(A, h*h) - ABB + F * (1 - A)) * dt
-    B += (db * lap5(B, h*h) + ABB - B * (F + k)) * dt
+    A += (da * lap5_opt(A, h*h) - ABB + F * (1 - A)) * dt
+    B += (db * lap5_opt(B, h*h) + ABB - B * (F + k)) * dt
 
   return A, B
 
@@ -62,7 +78,7 @@ def save_tile(matrix, out_img_path, _cmap):
   ax.imshow(matrix, interpolation='lanczos', cmap=_cmap)
   fig.savefig(out_img_path, bbox_inches='tight', pad_inches=0)
 
-
+@jit
 def contrast_img(in_img_path, out_img_path, light_color, dark_color):
   input_image = Image.open(in_img_path)
   image_array = np.array(input_image)
@@ -106,7 +122,7 @@ def merge_and_contrast_img(in_imgA_path, in_imgB_path, out_img_path):
   output_image = Image.fromarray(output_array, 'RGBA')
   output_image.save(out_img_path)
 
-
+@jit
 def tile_img(in_img_path, out_img_path, scale_factor):
   input_image = Image.open(in_img_path)
   input_array = np.array(input_image)

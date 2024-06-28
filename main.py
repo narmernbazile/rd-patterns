@@ -5,15 +5,16 @@ import matplotlib.pyplot as plt
 from PIL import Image
 # import sys
 
-from numba import jit
+# from numba import jit
 
+# source: https://github.com/wigging/gray-scott
 def lap5(f, h2) -> float:
   """
   Use a five-point stencil with periodic boundary conditions to approximate
   the Laplacian. The corresponding array slices for each component of the
   stencil are noted.
   """
-  f = np.pad(fold, 1, mode='wrap')
+  f = np.pad(f, 1, mode='wrap')
 
   left   = f[1:-1, :-2]   # shift left for f(x - h, y)
   right  = f[1:-1, 2:]    # shift right for f(x + h, y)
@@ -25,30 +26,14 @@ def lap5(f, h2) -> float:
 
   return fxy
 
-@jit
-def lap5_opt(grid, h2) -> float:
-  nrows, ncols = grid.shape
-  laplacian = np.zeros_like(grid)
-
-  for i in range(nrows):
-    for j in range(ncols):
-      laplacian[i, j] = (
-        grid[(i + 1) % nrows, j] +
-        grid[(i - 1) % nrows, j] +
-        grid[i, (j + 1) % ncols] +
-        grid[i, (j - 1) % ncols] -
-        4 * grid[i, j]
-      ) / 4
-  return laplacian
-
-@jit
+# source: https://github.com/wigging/gray-scott
 def reaction_diffusion(da: float, # diffusion rate for A
                        db: float, # diffusion rale for B
                         F: float, # feed rate
                         k: int,   # kill rate
-                        n: int   = 64,         # number of cells; nxn
+                        n: int   = 64,    # number of cells; nxn
                         h: int   = 2,     # approximation interval
-                       nt: int   = 20000, # number of timesteps to sumulate
+                       nt: int   = 20000, # number of timesteps to simulate
                        dt: float = 1      # magnitude of each timestep
                         ):
   
@@ -62,12 +47,12 @@ def reaction_diffusion(da: float, # diffusion rate for A
   A[low:high, low:high] = 0.50 + np.random.uniform(0, 0.1, (3, 3))
   B[low:high, low:high] = 0.25 + np.random.uniform(0, 0.1, (3, 3))
 
-  # iterate nt timesteps
+  # iterate nt timesteps.
   for n in range(nt):
     # print(f'Running {n + 1:,}/{nt:,}', end='\r')
     ABB = A * B * B
-    A += (da * lap5_opt(A, h*h) - ABB + F * (1 - A)) * dt
-    B += (db * lap5_opt(B, h*h) + ABB - B * (F + k)) * dt
+    A += (da * lap5(A, h*h) - ABB + F * (1 - A)) * dt
+    B += (db * lap5(B, h*h) + ABB - B * (F + k)) * dt
 
   return A, B
 
@@ -78,7 +63,7 @@ def save_tile(matrix, out_img_path, _cmap):
   ax.imshow(matrix, interpolation='lanczos', cmap=_cmap)
   fig.savefig(out_img_path, bbox_inches='tight', pad_inches=0)
 
-@jit
+# @jit
 def contrast_img(in_img_path, out_img_path, light_color, dark_color):
   input_image = Image.open(in_img_path)
   image_array = np.array(input_image)
@@ -122,7 +107,7 @@ def merge_and_contrast_img(in_imgA_path, in_imgB_path, out_img_path):
   output_image = Image.fromarray(output_array, 'RGBA')
   output_image.save(out_img_path)
 
-@jit
+# @jit
 def tile_img(in_img_path, out_img_path, scale_factor):
   input_image = Image.open(in_img_path)
   input_array = np.array(input_image)
@@ -162,20 +147,16 @@ def main():
   RED    = (128, 0, 0)
   YELLOW = (255, 255, 0)
   PINK   = (255, 192, 203)
+  CYAN   = (0, 255, 255)
+  ORANGE = (255, 165, 0)
 
   patterns = [standard, texture, circles, eggs, big_eggs]
   for idx, pattern in enumerate(patterns):
     A, B = pattern()
     save_tile(A, f"./.rd/_tile{idx}.png", "binary")
-    contrast_img(f"./.rd/_tile{idx}.png", f"./.rd/_processed_tile{idx}.png", WHITE, BLACK)
+    contrast_img(f"./.rd/_tile{idx}.png", f"./.rd/_processed_tile{idx}.png", BLACK, WHITE)
     tile_img(f"./.rd/_processed_tile{idx}.png", f"./.rd/wallpaper{idx}.png", 9)
   
-  # save_tile(A, "./_tileA.png", "Reds")
-  # save_tile(B, "./_tileB.png", "Blues")
-  # merge_and_contrast_img("./_tileA.png", "./_tileB.png", "_processed_tile.png")
-  # save_tile(A, "./_tile.png", "binary")
-  # contrast_img("./_tile.png", "_processed_tile.png", PINK, RED)
-  # tile_img("./_processed_tile.png", "./wallpaper.png", 8)
 
 
 if __name__ == "__main__": main()
